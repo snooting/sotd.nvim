@@ -1,6 +1,5 @@
 local M = {}
 
--- Debug logging function remains the same
 local function debug_log(...)
 	local debug_file = "/tmp/sotd_debug.log"
 	local f = io.open(debug_file, "a")
@@ -51,7 +50,6 @@ M.load_den = function()
 	return data
 end
 
--- Modified product selection using telescope with proper async handling
 M.choose_product = function(product_type, callback)
 	local pickers = require("telescope.pickers")
 	local finders = require("telescope.finders")
@@ -133,7 +131,6 @@ local function select_products(products, current_index, results, final_callback)
 	handle_product(1)
 end
 
--- SOTD Creation with proper async handling
 M.create_sotd = function()
 	debug_log("Starting SOTD creation")
 
@@ -150,6 +147,7 @@ M.create_sotd = function()
 	vim.api.nvim_command("buffer " .. buf)
 
 	-- Product types to prompt for
+	-- TODO: add other product types?
 	local products = {
 		{ "preshave", M.config.preshave_number },
 		{ "brush", 1 },
