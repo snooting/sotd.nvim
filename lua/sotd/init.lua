@@ -31,26 +31,35 @@ end
 -- Data handling
 M.load_den = function()
 	debug_log("Loading den file from:", M.config.den_file)
+
 	local f = io.open(M.config.den_file, "r")
+
 	if not f then
 		debug_log("ERROR: Could not open den file")
 		vim.notify("Could not read den file: " .. M.config.den_file, vim.log.levels.ERROR)
 		return {}
 	end
+
 	local content = f:read("*all")
+
 	f:close()
+
 	debug_log("Den file content length:", #content)
+
 	local ok, data = pcall(vim.json.decode, content)
+
 	if not ok then
 		debug_log("ERROR: Could not parse JSON:", data)
 		vim.notify("Could not parse den file: " .. data, vim.log.levels.ERROR)
 		return {}
 	end
+
 	debug_log("Loaded den data:", data)
+
 	return data
 end
 
-M.choose_product = function(product_type, callback)
+M.choose_product = function(product_type, callback, filter_fn)
 	local pickers = require("telescope.pickers")
 	local finders = require("telescope.finders")
 	local conf = require("telescope.config").values
@@ -64,12 +73,20 @@ M.choose_product = function(product_type, callback)
 		return
 	end
 
-	local items = vim.tbl_filter(function(item)
-		return item.status == "In Den"
-	end, den[product_type])
+	local items = den[product_type]
+
+	if filter_fn then
+		items = vim.tbl_filter(filter_fn, items)
+	elseif product_type ~= "blade" then -- Only apply In Den filter for non-blade items
+		items = vim.tbl_filter(function(item)
+			return item.status == "In Den"
+		end, items)
+	end
 
 	if #items == 0 then
-		vim.notify("No '" .. product_type .. "' items found with 'In Den' status", vim.log.levels.ERROR)
+		local msg = product_type == "blade" and "No blades found in den file"
+			or "No '" .. product_type .. "' items found with 'In Den' status"
+		vim.notify(msg, vim.log.levels.ERROR)
 		callback(nil)
 		return
 	end
@@ -80,10 +97,14 @@ M.choose_product = function(product_type, callback)
 			finder = finders.new_table({
 				results = items,
 				entry_maker = function(entry)
+					local display = entry.name
+					if product_type == "blade" and entry.number_uses then
+						display = display .. " (" .. entry.number_uses .. " uses)"
+					end
 					return {
 						value = entry,
-						display = entry.name,
-						ordinal = entry.name,
+						display = display,
+						ordinal = display,
 					}
 				end,
 			}),
@@ -123,8 +144,24 @@ local function select_products(products, current_index, results, final_callback)
 					type = product_type,
 					item = selected,
 				})
+
+				-- If this is a DE razor, prompt for blade selection
+				if product_type == "razor" and selected.type == "DE" then
+					M.choose_product("blade", function(blade)
+						if blade then
+							table.insert(results, {
+								type = "blade",
+								item = blade,
+							})
+						end
+						handle_product(index + 1)
+					end)
+				else
+					handle_product(index + 1)
+				end
+			else
+				handle_product(index + 1)
 			end
-			handle_product(index + 1)
 		end)
 	end
 
@@ -147,7 +184,6 @@ M.create_sotd = function()
 	vim.api.nvim_command("buffer " .. buf)
 
 	-- Product types to prompt for
-	-- TODO: add other product types?
 	local products = {
 		{ "preshave", M.config.preshave_number },
 		{ "brush", 1 },
@@ -160,11 +196,15 @@ M.create_sotd = function()
 	select_products(products, 1, {}, function(selections)
 		local output_lines = { current_date, "" }
 
-		-- Sort selections by original product order
-		local product_order = {}
-		for i, product in ipairs(products) do
-			product_order[product[1]] = i
-		end
+		-- Sort selections by original product order and handle blade placement
+		local product_order = {
+			preshave = 1,
+			brush = 2,
+			razor = 3,
+			blade = 3.5, -- Position blade right after razor
+			lather = 4,
+			postshave = 5,
+		}
 
 		table.sort(selections, function(a, b)
 			return product_order[a.type] < product_order[b.type]
@@ -172,10 +212,16 @@ M.create_sotd = function()
 
 		-- Process selections
 		for _, selection in ipairs(selections) do
-			table.insert(
-				output_lines,
-				string.format("* **%s:** %s", selection.type:gsub("^%l", string.upper), selection.item.daily_post_link)
-			)
+			local formatted_type = selection.type:gsub("^%l", string.upper)
+			local item_text = selection.item.daily_post_link
+
+			-- Special handling for blade display
+			if selection.type == "blade" then
+				item_text = selection.item.daily_post_link
+					or (selection.item.name .. " (" .. selection.item.number_uses .. ")")
+			end
+
+			table.insert(output_lines, string.format("* **%s:** %s", formatted_type, item_text))
 		end
 
 		-- Add footer
@@ -184,7 +230,7 @@ M.create_sotd = function()
 		table.insert(output_lines, "")
 		table.insert(
 			output_lines,
-			"~Shared via [Neovim](https://neovim.io/) & [sotd.nvim](https://github.com/snooting/sotd.nvim)~"
+			"~Shared via [Neovim](https://neovim.io/) & [sotd.nvim](https://github.com/username/sotd.nvim)~"
 		)
 
 		-- Set buffer content
