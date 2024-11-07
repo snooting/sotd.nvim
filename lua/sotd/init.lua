@@ -299,7 +299,7 @@ M.create_sotd = function()
 		table.insert(output_lines, "")
 		table.insert(
 			output_lines,
-			"~Created with [Neovim](https://neovim.io/) & [sotd.nvim](https://github.com/username/sotd.nvim)~"
+			"🍳 Created with [Neovim](https://neovim.io/) & [sotd.nvim](https://github.com/username/sotd.nvim) 🍳"
 		)
 
 		-- Set buffer content
