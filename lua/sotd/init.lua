@@ -2,15 +2,21 @@ local M = {}
 
 local function debug_log(...)
 	local debug_file = "/tmp/sotd_debug.log"
+
 	local f = io.open(debug_file, "a")
 	if f then
 		local args = { ... }
+
 		local str_args = {}
+
 		for i, arg in ipairs(args) do
 			str_args[i] = type(arg) == "table" and vim.inspect(arg) or tostring(arg)
 		end
+
 		local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+
 		f:write(string.format("[%s] %s\n", timestamp, table.concat(str_args, " ")))
+
 		f:close()
 	end
 end
@@ -18,6 +24,7 @@ end
 -- Configuration with defaults
 M.setup = function(opts)
 	debug_log("Setting up plugin with opts:", opts)
+
 	M.config = vim.tbl_deep_extend("force", {
 		den_file = vim.fn.expand("~/.config/nvim/den.json"),
 		log_file = vim.fn.expand("~/.config/nvim/sotd.log"),
@@ -25,7 +32,33 @@ M.setup = function(opts)
 		preshave_number = 1,
 		postshave_number = 4,
 	}, opts or {})
+
 	debug_log("Final config:", M.config)
+end
+
+M.save_den = function(data)
+	debug_log("Saving den file to:", M.config.den_file)
+
+	local f = io.open(M.config.den_file, "w")
+	if not f then
+		debug_log("ERROR: Could not open den file for writing")
+		vim.notify("Could not write to den file: " .. M.config.den_file, vim.log.levels.ERROR)
+		return false
+	end
+
+	local ok, encoded = pcall(vim.json.encode, data)
+	if not ok then
+		debug_log("ERROR: Could not encode JSON:", encoded)
+		vim.notify("Could not encode den data: " .. encoded, vim.log.levels.ERROR)
+		f:close()
+		return false
+	end
+
+	f:write(encoded)
+
+	f:close()
+	debug_log("Successfully saved den data")
+	return true
 end
 
 -- Data handling
@@ -33,7 +66,6 @@ M.load_den = function()
 	debug_log("Loading den file from:", M.config.den_file)
 
 	local f = io.open(M.config.den_file, "r")
-
 	if not f then
 		debug_log("ERROR: Could not open den file")
 		vim.notify("Could not read den file: " .. M.config.den_file, vim.log.levels.ERROR)
@@ -74,10 +106,9 @@ M.choose_product = function(product_type, callback, filter_fn)
 	end
 
 	local items = den[product_type]
-
 	if filter_fn then
 		items = vim.tbl_filter(filter_fn, items)
-	elseif product_type ~= "blade" then -- Only apply In Den filter for non-blade items
+	elseif product_type ~= "blade" then
 		items = vim.tbl_filter(function(item)
 			return item.status == "In Den"
 		end, items)
@@ -86,7 +117,9 @@ M.choose_product = function(product_type, callback, filter_fn)
 	if #items == 0 then
 		local msg = product_type == "blade" and "No blades found in den file"
 			or "No '" .. product_type .. "' items found with 'In Den' status"
+
 		vim.notify(msg, vim.log.levels.ERROR)
+
 		callback(nil)
 		return
 	end
@@ -112,7 +145,43 @@ M.choose_product = function(product_type, callback, filter_fn)
 			attach_mappings = function(prompt_bufnr)
 				actions.select_default:replace(function()
 					local selection = action_state.get_selected_entry()
+
 					actions.close(prompt_bufnr)
+
+					if product_type == "blade" then
+						local uses = tonumber(selection.value.number_uses) or 0
+
+						local choices = {
+							"New blade (reset count to 1)",
+							"Increment existing blade count",
+							"Cancel selection",
+						}
+
+						local choice =
+							vim.fn.confirm("Is this a new blade or existing blade?", table.concat(choices, "\n"), 1)
+
+						if choice == 1 then
+							-- New blade - reset count to 1
+							selection.value.number_uses = "1"
+						elseif choice == 2 then
+							-- Existing blade - increment count
+							selection.value.number_uses = tostring(uses + 1)
+						else
+							-- Cancel
+							callback(nil)
+							return
+						end
+
+						-- Save the updated den file
+						for i, blade in ipairs(den.blade) do
+							if blade.name == selection.value.name then
+								den.blade[i].number_uses = selection.value.number_uses
+								break
+							end
+						end
+						M.save_den(den)
+					end
+
 					callback(selection.value)
 				end)
 				return true
@@ -230,7 +299,7 @@ M.create_sotd = function()
 		table.insert(output_lines, "")
 		table.insert(
 			output_lines,
-			"~Shared via [Neovim](https://neovim.io/) & [sotd.nvim](https://github.com/username/sotd.nvim)~"
+			"~Created with [Neovim](https://neovim.io/) & [sotd.nvim](https://github.com/username/sotd.nvim)~"
 		)
 
 		-- Set buffer content
