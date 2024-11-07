@@ -30,7 +30,7 @@ M.setup = function(opts)
 		log_file = vim.fn.expand("~/.config/nvim/sotd.log"),
 		logging_enabled = false,
 		preshave_number = 1,
-		postshave_number = 4,
+		post_number = 4,
 	}, opts or {})
 
 	debug_log("Final config:", M.config)
@@ -258,7 +258,7 @@ M.create_sotd = function()
 		{ "brush", 1 },
 		{ "razor", 1 },
 		{ "lather", 1 },
-		{ "postshave", M.config.postshave_number },
+		{ "post", M.config.post_number },
 	}
 
 	-- Start the selection chain
@@ -272,7 +272,7 @@ M.create_sotd = function()
 			razor = 3,
 			blade = 3.5, -- Position blade right after razor
 			lather = 4,
-			postshave = 5,
+			post = 5,
 		}
 
 		table.sort(selections, function(a, b)
