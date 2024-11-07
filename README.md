@@ -71,9 +71,31 @@ The plugin uses a JSON file to store your den inventory. Create a file at `~/.co
   "razor": [
     {
       "name": "Mühle R41",
+      "type": "DE", // Razors with type "DE" will trigger blade selection prompt
       "status": "In Den",
       "link": "https://example.com/razor-link",
       "daily_post_link": "[Mühle R41](https://example.com/razor-link)"
+    },
+    {
+      "name": "Thiers-Issard 188 7/8 'Coq et Renard'",
+      "type": "Straight",
+      "status": "In Den",
+      "link": "https://www.artdubarbier.com/8094-large_default/rasoir-thiers-issard-188-78-soleil-ebene.jpg",
+      "daily_post_link": "[Thiers-Issard 188 7/8 'Coq et Renard'](https://www.artdubarbier.com/8094-large_default/rasoir-thiers-issard-188-78-soleil-ebene.jpg)"
+    }
+  ],
+  "blade": [
+    {
+      "name": "Astra Superior Platinum",
+      "number_uses": "14"
+    },
+    {
+      "name": "Feather",
+      "number_uses": "0"
+    },
+    {
+      "name": "Gillette Silver Blue",
+      "number_uses": "0"
     }
   ],
   "lather": [
