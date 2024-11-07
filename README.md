@@ -6,8 +6,8 @@ A Neovim plugin to format Shave of the Day (SOTD) posts for Reddit, Lemmy, Disco
 
 - Manage your shaving den inventory in a JSON file
 - Interactive product selection using Telescope
-- Markdown-formatted output with optional links
 - Customizable number of pre-shave and post-shave products
+- Blade use tracking for DE razors
 - Optional title addition for SOTD posts
 
 ## Requirements
@@ -54,64 +54,41 @@ The plugin uses a JSON file to store your den inventory. Create a file at `~/.co
 {
   "brush": [
     {
-      "name": "Semogue C3 Galahad Horse 🐎",
+      "name": "Zenith B21 boar",
       "status": "In Den",
       "link": "https://example.com/brush-link",
-      "daily_post_link": "[Semogue C3 Galahad Horse 🐎](https://example.com/brush-link)"
-    }
-  ],
-  "preshave": [
-    {
-      "name": "Proraso Green Preshave",
-      "status": "In Den",
-      "link": "https://example.com/preshave-link",
-      "daily_post_link": "[Proraso Green Preshave](https://example.com/preshave-link)"
-    }
-  ],
-  "razor": [
-    {
-      "name": "Mühle R41",
-      "type": "DE", // Razors with type "DE" will trigger blade selection prompt
-      "status": "In Den",
-      "link": "https://example.com/razor-link",
-      "daily_post_link": "[Mühle R41](https://example.com/razor-link)"
-    },
-    {
-      "name": "Thiers-Issard 188 7/8 'Coq et Renard'",
-      "type": "Straight",
-      "status": "In Den",
-      "link": "https://www.artdubarbier.com/8094-large_default/rasoir-thiers-issard-188-78-soleil-ebene.jpg",
-      "daily_post_link": "[Thiers-Issard 188 7/8 'Coq et Renard'](https://www.artdubarbier.com/8094-large_default/rasoir-thiers-issard-188-78-soleil-ebene.jpg)"
+      "daily_post_link": "[Zenith - B21 boar](https://imgur.com/a/zenith-b21-boar-oP0sLsA)"
     }
   ],
   "blade": [
     {
       "name": "Astra Superior Platinum",
-      "number_uses": "14"
-    },
-    {
-      "name": "Feather",
       "number_uses": "0"
-    },
+    }
+  ],
+  "razor": [
     {
-      "name": "Gillette Silver Blue",
-      "number_uses": "0"
+      "link": "https://getrockwell.com/products/rockwell-6c-double-edge-safety-razor",
+      "daily_post_link": "Rockwell - 6C",
+      "type": "DE",
+      "status": "In Den",
+      "name": "Rockwell - 6C"
     }
   ],
   "lather": [
     {
-      "name": "Haslinger Schafmilch",
+      "name": "Stirling Arkadia",
+      "daily_post_link": "Stirling - Arkadia",
       "status": "In Den",
-      "link": "https://example.com/soap-link",
-      "daily_post_link": "[Haslinger Schafmilch](https://example.com/soap-link)"
+      "link": "https://www.stirlingsoap.com/products/arkadia-shave-soap"
     }
   ],
   "postshave": [
     {
-      "name": "Nivea Sensitive Post Shave Balm",
+      "name": "Stirling - Arkadia",
+      "daily_post_link": "Stirling - Arkadia AS splash",
       "status": "In Den",
-      "link": "https://example.com/aftershave-link",
-      "daily_post_link": "[Nivea Sensitive Post Shave Balm](https://example.com/aftershave-link)"
+      "link": ""
     }
   ]
 }
@@ -147,11 +124,12 @@ The output will look something like this:
 ```markdown
 **Thursday, November 7, 2024: Morning Shave**
 
-- **Preshave:** [Proraso Green Preshave](https://example.com/preshave-link)
-- **Brush:** [Semogue C3 Galahad Horse 🐎](https://example.com/brush-link)
-- **Razor:** [Mühle R41](https://example.com/razor-link)
-- **Lather:** [Haslinger Schafmilch](https://example.com/soap-link)
-- **Postshave:** [Nivea Sensitive Post Shave Balm](https://example.com/aftershave-link)
+- **Brush:** [Zenith - B21 boar](https://imgur.com/a/zenith-b21-boar-oP0sLsA)
+- **Razor:** Rockwell - 6C
+- **Blade:** Gillette - Perma-Sharp (4)
+- **Lather:** Stirling - Arkadia
+- **Postshave:** Nivea - Sensitive After Shave Balm
+- **Postshave:** Stirling - Arkadia AS splash
 
 ---
 
