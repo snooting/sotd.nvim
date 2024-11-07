@@ -36,7 +36,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
             log_file = vim.fn.expand("~/.config/nvim/sotd.log"),
             logging_enabled = false,
             preshave_number = 1,
-            postshave_number = 4,
+            post_number = 4,
         })
     end,
     -- Optional: Add keymaps
