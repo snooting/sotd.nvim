@@ -33,6 +33,14 @@ M.setup = function(opts)
 		post_number = 4,
 	}, opts or {})
 
+	-- Create the SOTDCreate command
+	vim.api.nvim_create_user_command("SOTDCreate", function()
+		M.create_sotd()
+	end, {
+		desc = "Create a Shave of the Day post",
+	})
+	debug_log("Created SOTDCreate command")
+
 	debug_log("Final config:", M.config)
 end
 
