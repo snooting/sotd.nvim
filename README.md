@@ -29,6 +29,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
         "nvim-lua/plenary.nvim",
         "b0o/schemastore.nvim",
     },
+    lazy = false,
     config = function()
         require("sotd").setup({
             -- Optional: override default configuration
