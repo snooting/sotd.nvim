@@ -1,6 +1,6 @@
 local M = {}
 
-local function debug_log() end
+local function debug_log(...) end
 
 -- Configuration with defaults
 M.setup = function(opts)
@@ -14,10 +14,10 @@ M.setup = function(opts)
 
 	-- If opts contains den_file, verify it exists before using it
 	if opts and opts.den_file then
-		local f = io.open(opts.den_file, "r")
+		local den_file = io.open(opts.den_file, "r")
 
-		if f then
-			f:close()
+		if den_file then
+			den_file:close()
 		else
 			opts.den_file = default_config.den_file
 
@@ -57,9 +57,9 @@ M.setup = function(opts)
 	-- Setup logging function based on configuration
 	if M.config.logging_enabled then
 		debug_log = function(...)
-			local f = io.open(M.config.log_file, "a")
+			local log_file = io.open(M.config.log_file, "a")
 
-			if f then
+			if log_file then
 				local args = { ... }
 				local str_args = {}
 
@@ -69,8 +69,8 @@ M.setup = function(opts)
 
 				local timestamp = os.date("%Y-%m-%d %H:%M:%S")
 
-				f:write(string.format("[%s] %s\n", timestamp, table.concat(str_args, " ")))
-				f:close()
+				log_file:write(string.format("[%s] %s\n", timestamp, table.concat(str_args, " ")))
+				log_file:close()
 			end
 		end
 	end
