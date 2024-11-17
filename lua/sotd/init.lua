@@ -1,37 +1,82 @@
 local M = {}
 
-local function debug_log(...)
-	local debug_file = "/tmp/sotd_debug.log"
-
-	local f = io.open(debug_file, "a")
-	if f then
-		local args = { ... }
-
-		local str_args = {}
-
-		for i, arg in ipairs(args) do
-			str_args[i] = type(arg) == "table" and vim.inspect(arg) or tostring(arg)
-		end
-
-		local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-
-		f:write(string.format("[%s] %s\n", timestamp, table.concat(str_args, " ")))
-
-		f:close()
-	end
-end
+local function debug_log(...) end
 
 -- Configuration with defaults
 M.setup = function(opts)
-	debug_log("Setting up plugin with opts:", opts)
-
-	M.config = vim.tbl_deep_extend("force", {
+	local default_config = {
 		den_file = vim.fn.expand("~/.config/nvim/den.json"),
 		log_file = vim.fn.expand("~/.config/nvim/sotd.log"),
 		logging_enabled = false,
 		preshave_number = 1,
 		post_number = 4,
-	}, opts or {})
+	}
+
+	-- If opts contains den_file, verify it exists before using it
+	if opts and opts.den_file then
+		local den_file = io.open(opts.den_file, "r")
+
+		if den_file then
+			den_file:close()
+		else
+			opts.den_file = default_config.den_file
+
+			vim.notify(
+				string.format(
+					"Den file not found at %s, falling back to default location: %s",
+					opts.den_file,
+					default_config.den_file
+				),
+				vim.log.levels.WARN
+			)
+		end
+	end
+
+	-- If opts contains log_file, verify the directory is writable
+	if opts and opts.log_file then
+		local test_file = io.open(opts.log_file, "a")
+
+		if test_file then
+			test_file:close()
+		else
+			opts.log_file = default_config.log_file
+
+			vim.notify(
+				string.format(
+					"Cannot write to log file at %s, falling back to default location: %s",
+					opts.log_file,
+					default_config.log_file
+				),
+				vim.log.levels.WARN
+			)
+		end
+	end
+
+	M.config = vim.tbl_deep_extend("force", default_config, opts or {})
+
+	-- Setup logging function based on configuration
+	if M.config.logging_enabled then
+		debug_log = function(...)
+			local log_file = io.open(M.config.log_file, "a")
+
+			if log_file then
+				local args = { ... }
+				local str_args = {}
+
+				for i, arg in ipairs(args) do
+					str_args[i] = type(arg) == "table" and vim.inspect(arg) or tostring(arg)
+				end
+
+				local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+
+				log_file:write(string.format("[%s] %s\n", timestamp, table.concat(str_args, " ")))
+				log_file:close()
+			end
+		end
+	end
+
+	-- Log initial setup with the newly configured logging function
+	debug_log("Setting up plugin with opts:", opts)
 
 	-- Create the SOTDCreate command
 	vim.api.nvim_create_user_command("SOTDCreate", function()
