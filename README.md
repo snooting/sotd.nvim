@@ -84,7 +84,7 @@ The plugin uses a JSON file to store your den inventory. Create a file at `~/.co
       "link": "https://www.stirlingsoap.com/products/arkadia-shave-soap"
     }
   ],
-  "postshave": [
+  "post": [
     {
       "name": "Stirling - Arkadia",
       "daily_post_link": "Stirling - Arkadia AS splash",
@@ -129,8 +129,8 @@ The output will look something like this:
 - **Razor:** Rockwell - 6C
 - **Blade:** Gillette - Perma-Sharp (4)
 - **Lather:** Stirling - Arkadia
-- **Postshave:** Nivea - Sensitive After Shave Balm
-- **Postshave:** Stirling - Arkadia AS splash
+- **Post:** Nivea - Sensitive After Shave Balm
+- **Post:** Stirling - Arkadia AS splash
 
 ---
 
