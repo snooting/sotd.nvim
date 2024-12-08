@@ -9,6 +9,7 @@ A Neovim plugin to format Shave of the Day (SOTD) posts for Reddit, Lemmy, Disco
 - Customizable number of pre-shave and post-shave products
 - Blade use tracking for DE razors
 - Optional title addition for SOTD posts
+- Optional fragrance section
 
 ## Requirements
 
@@ -38,6 +39,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
             logging_enabled = false,
             preshave_number = 1,
             post_number = 4,
+            include_fragrance = false, -- Optional: enable fragrance section
         })
     end,
     -- Optional: Add keymaps
@@ -91,6 +93,14 @@ The plugin uses a JSON file to store your den inventory. Create a file at `~/.co
       "status": "In Den",
       "link": ""
     }
+  ],
+  "fragrance": [
+    {
+      "name": "Stirling Arkadia EdT",
+      "daily_post_link": "Stirling - Arkadia EdT",
+      "status": "In Den",
+      "link": ""
+    }
   ]
 }
 ```
@@ -109,6 +119,8 @@ The plugin uses a JSON file to store your den inventory. Create a file at `~/.co
     preshave_number = 1,
     -- Number of post-shave products to prompt for
     postshave_number = 4,
+    -- Whether to include fragrance section
+    include_fragrance = false,
 }
 ```
 
@@ -129,8 +141,9 @@ The output will look something like this:
 - **Razor:** Rockwell - 6C
 - **Blade:** Gillette - Perma-Sharp (4)
 - **Lather:** Stirling - Arkadia
-- **Post:** Nivea - Sensitive After Shave Balm
-- **Post:** Stirling - Arkadia AS splash
+- **Post Shave:** Nivea - Sensitive After Shave Balm
+- **Post Shave:** Stirling - Arkadia AS splash
+- **Frag** Stirling - Arkadia EdT
 
 ---
 

@@ -10,6 +10,7 @@ M.setup = function(opts)
 		logging_enabled = false,
 		preshave_number = 1,
 		post_number = 4,
+		include_fragrance = false,
 	}
 
 	-- If opts contains den_file, verify it exists before using it
@@ -314,6 +315,11 @@ M.create_sotd = function()
 		{ "post", M.config.post_number },
 	}
 
+	-- Add fragrance to products if enabled in config
+	if M.config.include_fragrance then
+		table.insert(products, { "fragrance", 1 })
+	end
+
 	-- Start the selection chain
 	select_products(products, 1, {}, function(selections)
 		local output_lines = { current_date, "" }
@@ -326,6 +332,7 @@ M.create_sotd = function()
 			blade = 3.5, -- Position blade right after razor
 			lather = 4,
 			post = 5,
+			fragrance = 6,
 		}
 
 		table.sort(selections, function(a, b)
@@ -338,6 +345,8 @@ M.create_sotd = function()
 
 			if formatted_type == "Post" then
 				formatted_type = "Post Shave"
+			elseif formatted_type == "Fragrance" then
+				formatted_type = "Frag"
 			end
 
 			local item_text = selection.item.daily_post_link
