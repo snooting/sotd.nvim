@@ -143,7 +143,7 @@ The output will look something like this:
 - **Lather:** Stirling - Arkadia
 - **Post Shave:** Nivea - Sensitive After Shave Balm
 - **Post Shave:** Stirling - Arkadia AS splash
-- **Frag** Stirling - Arkadia EdT
+- **Fragrance** Stirling - Arkadia EdT
 
 ---
 
