@@ -345,8 +345,6 @@ M.create_sotd = function()
 
 			if formatted_type == "Post" then
 				formatted_type = "Post Shave"
-			elseif formatted_type == "Fragrance" then
-				formatted_type = "Frag"
 			end
 
 			local item_text = selection.item.daily_post_link
