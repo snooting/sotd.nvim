@@ -268,7 +268,7 @@ local function select_products(products, current_index, results, final_callback)
 				})
 
 				-- If this is a DE razor, prompt for blade selection
-				if product_type == "razor" and selected.type == "DE" then
+				if product_type == "razor" and selected.type == "DE" or selected.typpe == "SE" then
 					M.choose_product("blade", function(blade)
 						if blade then
 							table.insert(results, {
@@ -335,6 +335,11 @@ M.create_sotd = function()
 		-- Process selections
 		for _, selection in ipairs(selections) do
 			local formatted_type = selection.type:gsub("^%l", string.upper)
+
+			if formatted_type == "Post" then
+				formatted_type = "Post Shave"
+			end
+
 			local item_text = selection.item.daily_post_link
 
 			-- Special handling for blade display
