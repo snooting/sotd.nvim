@@ -145,6 +145,8 @@ M.load_den = function()
 	return data
 end
 
+vim.g.current_razor = nil
+
 M.choose_product = function(product_type, callback, filter_fn)
 	local pickers = require("telescope.pickers")
 	local finders = require("telescope.finders")
@@ -162,6 +164,11 @@ M.choose_product = function(product_type, callback, filter_fn)
 	local items = den[product_type]
 	if filter_fn then
 		items = vim.tbl_filter(filter_fn, items)
+	elseif product_type == "blade" and vim.g.current_razor then
+		-- Filter blades to only show those for current razor
+		items = vim.tbl_filter(function(item)
+			return item.razor ~= "" and item.razor == vim.g.current_razor.name
+		end, items)
 	elseif product_type ~= "blade" then
 		items = vim.tbl_filter(function(item)
 			return item.status == "In Den"
@@ -185,9 +192,11 @@ M.choose_product = function(product_type, callback, filter_fn)
 				results = items,
 				entry_maker = function(entry)
 					local display = entry.name
-					if product_type == "blade" and entry.number_uses then
-						display = display .. " (" .. entry.number_uses .. " uses)"
+
+					if product_type == "blade" then
+						display = string.format("%s (%s uses)", display, entry.number_uses or "0")
 					end
+
 					return {
 						value = entry,
 						display = display,
@@ -203,6 +212,14 @@ M.choose_product = function(product_type, callback, filter_fn)
 					actions.close(prompt_bufnr)
 
 					if product_type == "blade" then
+						local current_razor = vim.g.current_razor
+
+						if not current_razor then
+							vim.notify("No razor selected before blade selection", vim.log.levels.ERROR)
+							callback(nil)
+							return
+						end
+
 						local uses = tonumber(selection.value.number_uses) or 0
 
 						local choices = {
@@ -228,12 +245,15 @@ M.choose_product = function(product_type, callback, filter_fn)
 
 						-- Save the updated den file
 						for i, blade in ipairs(den.blade) do
-							if blade.name == selection.value.name then
+							if blade.name == selection.value.name and blade.razor == current_razor.name then
 								den.blade[i].number_uses = selection.value.number_uses
 								break
 							end
 						end
 						M.save_den(den)
+
+						selection.value.daily_post_link =
+							string.format("%s (%s)", selection.value.name, selection.value.number_uses)
 					end
 
 					callback(selection.value)
@@ -269,7 +289,9 @@ local function select_products(products, current_index, results, final_callback)
 				})
 
 				-- If this is a DE razor, prompt for blade selection
-				if product_type == "razor" and selected.type == "DE" or selected.typpe == "SE" then
+				if product_type == "razor" and (selected.type == "DE" or selected.type == "SE") then
+					vim.g.current_razor = selected
+
 					M.choose_product("blade", function(blade)
 						if blade then
 							table.insert(results, {

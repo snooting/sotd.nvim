@@ -66,7 +66,8 @@ The plugin uses a JSON file to store your den inventory. Create a file at `~/.co
   "blade": [
     {
       "name": "Astra Superior Platinum",
-      "number_uses": "0"
+      "number_uses": "0",
+      "razor": "Rockwell - 6C" // Must match exactly with razor name
     }
   ],
   "razor": [
@@ -104,6 +105,10 @@ The plugin uses a JSON file to store your den inventory. Create a file at `~/.co
   ]
 }
 ```
+
+Note: For blades, the `razor` field must exactly match the `name` field of a
+razor in your den. When selecting a DE or SE razor during SOTD creation, the
+blade picker will only show blades that are explicitly assigned to that razor.
 
 ### Default Configuration
 
