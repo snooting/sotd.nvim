@@ -94,13 +94,15 @@ M.save_den = function(data)
 	debug_log("Saving den file to:", M.config.den_file)
 
 	local f = io.open(M.config.den_file, "w")
+
 	if not f then
 		debug_log("ERROR: Could not open den file for writing")
 		vim.notify("Could not write to den file: " .. M.config.den_file, vim.log.levels.ERROR)
 		return false
 	end
 
-	local ok, encoded = pcall(vim.json.encode, data)
+	local ok, encoded = pcall(vim.json.encode, data, { indent = 2 })
+
 	if not ok then
 		debug_log("ERROR: Could not encode JSON:", encoded)
 		vim.notify("Could not encode den data: " .. encoded, vim.log.levels.ERROR)
