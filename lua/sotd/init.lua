@@ -115,10 +115,17 @@ M.save_den = function(data)
 	for _, new_blade in ipairs(data.blade) do
 		for _, current_blade in ipairs(current_den.blade) do
 			if current_blade.name == new_blade.name and current_blade.razor == new_blade.razor then
-				local old_count = current_blade.number_uses
-				local new_count = new_blade.number_uses
+				local count_pattern = string.format(
+					'("name": "%s".-"number_uses": ")(%s)(".-"razor": "%s")',
+					new_blade.name:gsub("%-", "%%-"),
+					current_blade.number_uses,
+					new_blade.razor:gsub("%-", "%%-")
+				)
 
-				content = content:gsub('"number_uses":%s*"' .. old_count .. '"', '"number_uses": "' .. new_count .. '"')
+				-- Update only the count portion
+				content = content:gsub(count_pattern, function(before, _, after)
+					return before .. new_blade.number_uses .. after
+				end, 1)
 			end
 		end
 	end
