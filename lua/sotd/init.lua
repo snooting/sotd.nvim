@@ -1,106 +1,129 @@
 local M = {}
+local sqlite = require("sqlite.db")
+
+local config = {}
 
 local function debug_log(...) end
 
+local migrations = {
+	{
+		version = 1,
+		up = [[
+            CREATE TABLE IF NOT EXISTS shaves (
+                id INTEGER PRIMARY KEY,
+                date TEXT NOT NULL,
+                razor TEXT NOT NULL,
+                blade TEXT NOT NULL,
+                blade_uses INTEGER,
+                pre_shave TEXT,
+                soap TEXT,
+                brush TEXT,
+                post_shave_1 TEXT,
+                post_shave_2 TEXT,
+                post_shave_3 TEXT,
+                fragrance TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
+
+            INSERT OR IGNORE INTO schema_version (version) VALUES (1);
+
+        ]],
+	},
+}
+
+local function run_migrations(db)
+	-- First check if schema_version exists
+	local version = 0
+
+	if db:exists("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_version'") then
+		version = db:first_col("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1") or 0
+	end
+
+	-- Execute migrations in order
+	for _, migration in ipairs(migrations) do
+		if migration.version > version then
+			local ok, err = db:execute(migration.up)
+			if not ok then
+				error("Migration " .. migration.version .. " failed: " .. err)
+			end
+
+			-- Update version after successful migration
+			db:execute("UPDATE schema_version SET version = " .. migration.version)
+
+			vim.notify("Database migrated to version " .. migration.version, vim.log.levels.INFO)
+		end
+	end
+end
+
+local function init_db()
+	local db_path = config.db_path or vim.fn.expand("~/.config/nvim/sotd.db")
+
+	-- Create proper SQLite connection
+	local db, err = sqlite:open(db_path)
+
+	if not db then
+		vim.notify("Failed to open database: " .. (err or "unknown error"), vim.log.levels.ERROR)
+		return nil
+	end
+
+	-- Enable foreign key support
+	db:execute("PRAGMA foreign_keys = ON;")
+
+	return db
+end
+
 -- Configuration with defaults
 M.setup = function(opts)
-	local default_config = {
-		den_file = vim.fn.expand("~/.config/nvim/den.json"),
-		log_file = vim.fn.expand("~/.config/nvim/sotd.log"),
-		logging_enabled = false,
-		preshave_number = 1,
-		post_number = 4,
-		include_fragrance = false,
-	}
+	config = vim.tbl_deep_extend("force", {
+		db_path = vim.fn.expand("~/.config/nvim/sotd.db"),
+		-- other config options
+	}, opts or {})
 
-	-- If opts contains den_file, verify it exists before using it
-	if opts and opts.den_file then
-		local den_file = io.open(opts.den_file, "r")
+	-- Initialize database
+	M.db = init_db()
 
-		if den_file then
-			den_file:close()
-		else
-			opts.den_file = default_config.den_file
-
-			vim.notify(
-				string.format(
-					"Den file not found at %s, falling back to default location: %s",
-					opts.den_file,
-					default_config.den_file
-				),
-				vim.log.levels.WARN
-			)
-		end
+	if not M.db or M.db:isclose() then
+		vim.notify("Failed to initialize database connection", vim.log.levels.ERROR)
+		return
 	end
 
-	-- If opts contains log_file, verify the directory is writable
-	if opts and opts.log_file then
-		local test_file = io.open(opts.log_file, "a")
-
-		if test_file then
-			test_file:close()
-		else
-			opts.log_file = default_config.log_file
-
-			vim.notify(
-				string.format(
-					"Cannot write to log file at %s, falling back to default location: %s",
-					opts.log_file,
-					default_config.log_file
-				),
-				vim.log.levels.WARN
-			)
-		end
+	local ok, err = pcall(run_migrations, M.db)
+	if not ok then
+		vim.notify("Migration failed: " .. err, vim.log.levels.ERROR)
+		M.db:close()
+		return
 	end
 
-	M.config = vim.tbl_deep_extend("force", default_config, opts or {})
-
-	-- Setup logging function based on configuration
-	if M.config.logging_enabled then
-		debug_log = function(...)
-			local log_file = io.open(M.config.log_file, "a")
-
-			if log_file then
-				local args = { ... }
-				local str_args = {}
-
-				for i, arg in ipairs(args) do
-					str_args[i] = type(arg) == "table" and vim.inspect(arg) or tostring(arg)
-				end
-
-				local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-
-				log_file:write(string.format("[%s] %s\n", timestamp, table.concat(str_args, " ")))
-				log_file:close()
-			end
-		end
-	end
-
-	-- Log initial setup with the newly configured logging function
-	debug_log("Setting up plugin with opts:", opts)
-
-	-- Create the SOTDCreate command
+	-- Create commands
 	vim.api.nvim_create_user_command("SOTDCreate", function()
 		M.create_sotd()
-	end, {
-		desc = "Create a Shave of the Day post",
-	})
-	debug_log("Created SOTDCreate command")
+	end, { desc = "Create new Shave of the Day entry" })
 
-	debug_log("Final config:", M.config)
+	-- vim.api.nvim_create_user_command("SOTDStats", function(opts)
+	-- 	M.show_stats(opts.args)
+	-- end, {
+	-- 	nargs = "?",
+	-- 	complete = function()
+	-- 		return { "blades", "soaps", "razors", "posts" }
+	-- 	end,
+	-- 	desc = "Show shaving statistics",
+	-- })
 end
 
 M.save_den = function(data)
-	debug_log("Saving den file to:", M.config.den_file)
+	debug_log("Saving den file to:", config.den_file)
 
 	-- Encode the data to JSON
 	local json_content = vim.json.encode(data)
 
 	-- Write the JSON to the file
-	local f = io.open(M.config.den_file, "w")
+	local f = io.open(config.den_file, "w")
 	if not f then
 		debug_log("ERROR: Could not open den file for writing")
-		vim.notify("Could not write to den file: " .. M.config.den_file, vim.log.levels.ERROR)
+		vim.notify("Could not write to den file: " .. config.den_file, vim.log.levels.ERROR)
 		return false
 	end
 
@@ -113,12 +136,12 @@ end
 
 -- Data handling
 M.load_den = function()
-	debug_log("Loading den file from:", M.config.den_file)
+	debug_log("Loading den file from:", config.den_file)
 
-	local f = io.open(M.config.den_file, "r")
+	local f = io.open(config.den_file, "r")
 	if not f then
 		debug_log("ERROR: Could not open den file")
-		vim.notify("Could not read den file: " .. M.config.den_file, vim.log.levels.ERROR)
+		vim.notify("Could not read den file: " .. config.den_file, vim.log.levels.ERROR)
 		return {}
 	end
 
@@ -310,84 +333,145 @@ local function select_products(products, current_index, results, final_callback)
 end
 
 M.create_sotd = function()
-	debug_log("Starting SOTD creation")
-
-	-- Get title first
-	local current_date = os.date("**%A, %B %d, %Y**")
-	local title = vim.fn.input("Enter SOTD title (optional): ")
-	if title ~= "" then
-		current_date = current_date:gsub("%*%*$", ": " .. title .. "**")
+	if not M.db or M.db:isclose() then
+		vim.notify("Database connection not available", vim.log.levels.ERROR)
+		return
 	end
 
-	-- Create buffer first
-	local buf = vim.api.nvim_create_buf(true, true)
-	vim.api.nvim_buf_set_option(buf, "buftype", "")
-	vim.api.nvim_command("buffer " .. buf)
-
-	-- Product types to prompt for
-	local products = {
-		{ "preshave", M.config.preshave_number },
-		{ "brush", 1 },
-		{ "razor", 1 },
-		{ "lather", 1 },
-		{ "post", M.config.post_number },
+	local selections = {
+		razor = nil,
+		blade = nil,
+		lather = nil,
+		brush = nil,
+		post = {},
+		fragrance = nil,
 	}
 
-	-- Add fragrance to products if enabled in config
-	if M.config.include_fragrance then
+	local function select_next_product(products, index, callback)
+		if index > #products then
+			callback()
+			return
+		end
+
+		local product_type, count = unpack(products[index])
+
+		local function handle_selection(selected, num_selected)
+			if selected then
+				if product_type == "post" then
+					for i = 1, count do
+						selections.post[i] = selections.post[i] or {}
+						if selected[i] then
+							selections.post[i] = selected[i].item
+						end
+					end
+				else
+					selections[product_type] = selected.item
+					if product_type == "razor" then
+						vim.g.current_razor = selected.item
+					end
+				end
+			end
+			select_next_product(products, index + 1, callback)
+		end
+
+		if product_type == "post" then
+			-- Special handling for multiple post-shave products
+			local posts_selected = 0
+			local post_results = {}
+
+			local function select_post(n)
+				if n > count then
+					handle_selection(post_results)
+					return
+				end
+
+				M.choose_product("post", function(selected)
+					if selected then
+						post_results[n] = selected
+						posts_selected = posts_selected + 1
+					end
+					select_post(n + 1)
+				end)
+			end
+
+			select_post(1)
+		else
+			M.choose_product(product_type, function(selected)
+				handle_selection(selected)
+			end)
+		end
+	end
+
+	local products = {
+		{ "preshave", config.preshave_number },
+		{ "brush", 1 },
+		{ "razor", 1 },
+		{ "blade", 1 },
+		{ "lather", 1 },
+		{ "post", config.post_number },
+	}
+
+	if config.include_fragrance then
 		table.insert(products, { "fragrance", 1 })
 	end
 
-	-- Start the selection chain
-	select_products(products, 1, {}, function(selections)
-		local output_lines = { current_date, "" }
-
-		-- Sort selections by original product order and handle blade placement
-		local product_order = {
-			preshave = 1,
-			brush = 2,
-			razor = 3,
-			blade = 3.5, -- Position blade right after razor
-			lather = 4,
-			post = 5,
-			fragrance = 6,
+	select_next_product(products, 1, function()
+		local params = {
+			date = os.date("%Y-%m-%d"),
+			razor = selections.razor and selections.razor.name or "",
+			blade = selections.blade and selections.blade.name or "",
+			blade_uses = selections.blade and tonumber(selections.blade.number_uses) or 0,
+			soap = selections.lather and selections.lather.name or "",
+			brush = selections.brush and selections.brush.name or "",
+			post_1 = selections.post[1] and selections.post[1].name or "",
+			post_2 = selections.post[2] and selections.post[2].name or "",
+			post_3 = selections.post[3] and selections.post[3].name or "",
+			fragrance = selections.fragrance and selections.fragrance.name or "",
 		}
 
-		table.sort(selections, function(a, b)
-			return product_order[a.type] < product_order[b.type]
-		end)
+		print("selections", params)
 
-		-- Process selections
-		for _, selection in ipairs(selections) do
-			local formatted_type = selection.type:gsub("^%l", string.upper)
+		M.db:insert("shaves", {
+			date = params.date,
+			razor = params.razor,
+			blade = params.blade,
+			blade_uses = params.blade_uses,
+			soap = params.soap,
+			brush = params.brush,
+			post_shave_1 = params.post_1,
+			post_shave_2 = params.post_2,
+			post_shave_3 = params.post_3,
+			fragrance = params.fragrance,
+		})
 
-			if formatted_type == "Post" then
-				formatted_type = "Post Shave"
-			end
+		-- Create buffer with SOTD summary
+		local lines = {
+			"# Shave of the Day - " .. os.date("%A, %B %d, %Y"),
+			"",
+			"## Products Used",
+			"- Razor: " .. (params.razor ~= "" and params.razor or "N/A"),
+			"- Blade: " .. (params.blade ~= "" and params.blade .. " (Use #" .. params.blade_uses .. ")" or "N/A"),
+			"- Brush: " .. (params.brush ~= "" and params.brush or "N/A"),
+			"- Soap: " .. (params.soap ~= "" and params.soap or "N/A"),
+			"- Post Shave: " .. table.concat(
+				vim.tbl_filter(function(v)
+					return v ~= ""
+				end, {
+					params.post_1,
+					params.post_2,
+					params.post_3,
+				}),
+				", "
+			),
+		}
 
-			local item_text = selection.item.daily_post_link
-
-			-- Special handling for blade display
-			if selection.type == "blade" then
-				item_text = selection.item.daily_post_link
-					or (selection.item.name .. " (" .. selection.item.number_uses .. ")")
-			end
-
-			table.insert(output_lines, string.format("* **%s:** %s", formatted_type, item_text))
+		if config.include_fragrance and params.fragrance ~= "" then
+			table.insert(lines, "- Fragrance: " .. params.fragrance)
 		end
 
-		-- Add footer
-		table.insert(output_lines, "")
-		table.insert(output_lines, "---")
-		table.insert(output_lines, "")
-		table.insert(
-			output_lines,
-			"🍳 Created with [Neovim](https://neovim.io/) & [sotd.nvim](https://github.com/snooting/sotd.nvim) 🍳"
-		)
-
-		-- Set buffer content
-		vim.api.nvim_buf_set_lines(buf, 0, -1, false, output_lines)
-		debug_log("Final buffer contents:", output_lines)
+		local buf = vim.api.nvim_create_buf(true, true)
+		vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+		vim.api.nvim_command("buffer " .. buf)
 	end)
 end
 
