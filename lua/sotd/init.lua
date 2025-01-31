@@ -93,39 +93,18 @@ end
 M.save_den = function(data)
 	debug_log("Saving den file to:", M.config.den_file)
 
-	local f = io.open(M.config.den_file, "r+")
+	-- Encode the data to JSON
+	local json_content = vim.json.encode(data)
 
+	-- Write the JSON to the file
+	local f = io.open(M.config.den_file, "w")
 	if not f then
 		debug_log("ERROR: Could not open den file for writing")
 		vim.notify("Could not write to den file: " .. M.config.den_file, vim.log.levels.ERROR)
 		return false
 	end
 
-	local content = f:read("*a")
-
-	local ok, current_den = pcall(vim.json.decode, content)
-
-	if not ok then
-		debug_log("ERROR: Could not parse den file JSON")
-		vim.notify("Could not parse den file", vim.log.levels.ERROR)
-		return false
-	end
-
-	-- Find and update matching blade counts
-	for _, new_blade in ipairs(data.blade) do
-		for _, current_blade in ipairs(current_den.blade) do
-			if current_blade.name == new_blade.name and current_blade.razor == new_blade.razor then
-				local old_count = current_blade.number_uses
-				local new_count = new_blade.number_uses
-
-				content = content:gsub('"number_uses":%s*"' .. old_count .. '"', '"number_uses": "' .. new_count .. '"')
-			end
-		end
-	end
-
-	-- Return to beginning of file
-	f:seek("set")
-	f:write(content)
+	f:write(json_content)
 	f:close()
 
 	debug_log("Successfully saved den data")
